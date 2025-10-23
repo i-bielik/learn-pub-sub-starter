@@ -30,3 +30,61 @@ func PublishJSON[T any](ch *amqp.Channel, exchange, key string, val T) error {
 	return nil
 
 }
+
+// Define an enum-like type for queue types as strings
+type SimpleQueueType string
+
+const (
+	Durable   SimpleQueueType = "durable"
+	Transient SimpleQueueType = "transient"
+)
+
+func DeclareAndBind(
+	conn *amqp.Connection,
+	exchange,
+	queueName,
+	key string,
+	queueType SimpleQueueType, // an enum to represent "durable" or "transient"
+) (*amqp.Channel, amqp.Queue, error) {
+	// create new channel
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Fatal("Failed to create new channel:", err)
+	}
+
+	// Declare the queue based on type
+	var q amqp.Queue
+	if queueType == Durable {
+		q, err = ch.QueueDeclare(
+			queueName,
+			true,  // durable
+			false, // autoDelete
+			false, // exclusive
+			false, // noWait
+			nil,   // args
+		)
+	} else {
+		q, err = ch.QueueDeclare(
+			queueName,
+			false, // durable
+			true,  // autoDelete
+			true,  // exclusive
+			false, // noWait
+			nil,   // args
+		)
+	}
+	if err != nil {
+		log.Fatal("Failed to declare queue:", err)
+		return nil, amqp.Queue{}, err
+	}
+
+	// bind queue to channel
+	err = ch.QueueBind(queueName, key, exchange, false, nil)
+	if err != nil {
+		log.Fatal("Failed to bind queue to channel:", err)
+		return nil, amqp.Queue{}, err
+	}
+
+	return ch, q, nil
+
+}
