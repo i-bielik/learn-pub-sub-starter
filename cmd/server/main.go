@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -23,6 +24,12 @@ func main() {
 
 	defer conn.Close()
 
+	// print server help at the beginning
+	gamelogic.PrintServerHelp()
+
+	// Declare and bind new queue
+	// ch, _, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, "game_logs", routing.GameLogSlug, pubsub.Durable)
+
 	// create new channel
 	ch, err := conn.Channel()
 	if err != nil {
@@ -31,15 +38,45 @@ func main() {
 
 	fmt.Println("AMPQ connection successful")
 
-	// publish message
-	err = pubsub.PublishJSON(
-		ch,
-		string(routing.ExchangePerilDirect),
-		string(routing.PauseKey),
-		routing.PlayingState{IsPaused: true},
-	)
-	if err != nil {
-		log.Fatal("Failed to publish message:", err)
+out:
+	for {
+		cmd := gamelogic.GetInput()
+		switch cmd[0] {
+		case "":
+			continue
+		case "pause":
+			log.Println("Sending a Pause message")
+
+			// publish message
+			err = pubsub.PublishJSON(
+				ch,
+				string(routing.ExchangePerilDirect),
+				string(routing.PauseKey),
+				routing.PlayingState{IsPaused: true},
+			)
+			if err != nil {
+				log.Fatal("Failed to publish message:", err)
+			}
+		case "resume":
+			log.Println("Sending a Resume message")
+			// publish message
+			err = pubsub.PublishJSON(
+				ch,
+				string(routing.ExchangePerilDirect),
+				string(routing.PauseKey),
+				routing.PlayingState{IsPaused: false},
+			)
+			if err != nil {
+				log.Fatal("Failed to publish message:", err)
+			}
+		case "quit":
+			log.Println("Exiting")
+			break out // break out of the loop
+		default:
+			log.Println("Not recognized command. Please retry.")
+
+		}
+
 	}
 
 	// wait for ctrl+c

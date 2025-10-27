@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -40,11 +39,49 @@ func main() {
 		log.Fatal("Failed to create channel and queue:", err)
 	}
 
-	// wait for ctrl+c
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	<-signalChan
+	// new game state
+	gs := gamelogic.NewGameState(username)
 
-	// if signal received, print message and close connection
-	fmt.Println("Received an interrupt, closing connections...")
+	// subscribe
+	pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilDirect,
+		routing.PauseKey+"."+gs.GetUsername(),
+		routing.PauseKey,
+		pubsub.Transient,
+		handlerPause(gs),
+	)
+
+	for {
+		cmd := gamelogic.GetInput()
+		switch cmd[0] {
+		case "":
+			continue
+		case "spawn":
+			err = gs.CommandSpawn(cmd)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+		case "move":
+			_, err := gs.CommandMove(cmd)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			fmt.Println("Move successful")
+		case "status":
+			gs.CommandStatus()
+		case "help":
+			gamelogic.PrintClientHelp()
+		case "spam":
+			fmt.Println("Spamming not allowed yet!")
+		case "quit":
+			gamelogic.PrintQuit()
+			return
+		default:
+			fmt.Println("Not recognized command. Please retry.")
+		}
+
+	}
 }
