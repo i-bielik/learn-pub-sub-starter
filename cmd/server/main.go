@@ -28,10 +28,10 @@ func main() {
 	gamelogic.PrintServerHelp()
 
 	// Declare and bind new queue
-	// ch, _, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, "game_logs", routing.GameLogSlug, pubsub.Durable)
+	ch, _, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, "game_logs", routing.GameLogSlug, pubsub.Durable)
 
 	// create new channel
-	ch, err := conn.Channel()
+	// ch, err := conn.Channel()
 	if err != nil {
 		log.Fatal("Failed to create new channel:", err)
 	}
