@@ -136,19 +136,16 @@ func SubscribeJSON[T any](
 				if err != nil {
 					log.Printf("ack error: %+v", err)
 				}
-				log.Println("Ack")
 			case NackDiscard:
 				err = message.Nack(false, false)
 				if err != nil {
 					log.Printf("nack error: %+v", err)
 				}
-				log.Println("NackDiscard")
 			case NackRequeue:
 				err = message.Nack(false, true)
 				if err != nil {
 					log.Printf("nack error: %+v", err)
 				}
-				log.Println("NackRequeue")
 			}
 
 		}
