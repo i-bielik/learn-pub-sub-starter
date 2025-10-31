@@ -40,6 +40,15 @@ const (
 	Transient SimpleQueueType = "transient"
 )
 
+// Define acktype
+type Acktype int
+
+const (
+	Ack Acktype = iota
+	NackDiscard
+	NackRequeue
+)
+
 func DeclareAndBind(
 	conn *amqp.Connection,
 	exchange,
@@ -62,7 +71,9 @@ func DeclareAndBind(
 			false, // autoDelete
 			false, // exclusive
 			false, // noWait
-			nil,   // args
+			amqp.Table{
+				"x-dead-letter-exchange": "peril_dlx",
+			}, // args
 		)
 	} else {
 		q, err = ch.QueueDeclare(
@@ -71,7 +82,9 @@ func DeclareAndBind(
 			true,  // autoDelete
 			true,  // exclusive
 			false, // noWait
-			nil,   // args
+			amqp.Table{
+				"x-dead-letter-exchange": "peril_dlx",
+			}, // args
 		)
 	}
 	if err != nil {
@@ -80,7 +93,7 @@ func DeclareAndBind(
 	}
 
 	// bind queue to channel
-	err = ch.QueueBind(queueName, key, exchange, false, nil)
+	err = ch.QueueBind(queueName, key, exchange, false, amqp.Table{})
 	if err != nil {
 		log.Fatal("Failed to bind queue to channel:", err)
 		return nil, amqp.Queue{}, err
@@ -96,7 +109,7 @@ func SubscribeJSON[T any](
 	queueName,
 	key string,
 	queueType SimpleQueueType, // an enum to represent "durable" or "transient"
-	handler func(T),
+	handler func(T) Acktype,
 ) error {
 	ch, _, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
 	if err != nil {
@@ -116,11 +129,28 @@ func SubscribeJSON[T any](
 				continue
 			}
 			// call handler func
-			handler(msg)
-			// ... this consumer is responsible for sending message per log
-			if e := message.Ack(false); e != nil {
-				log.Printf("ack error: %+v", e)
+			switch handler(msg) {
+			case Ack:
+				// ... this consumer is responsible for sending message per log
+				err = message.Ack(false)
+				if err != nil {
+					log.Printf("ack error: %+v", err)
+				}
+				log.Println("Ack")
+			case NackDiscard:
+				err = message.Nack(false, false)
+				if err != nil {
+					log.Printf("nack error: %+v", err)
+				}
+				log.Println("NackDiscard")
+			case NackRequeue:
+				err = message.Nack(false, true)
+				if err != nil {
+					log.Printf("nack error: %+v", err)
+				}
+				log.Println("NackRequeue")
 			}
+
 		}
 	}()
 	return nil
