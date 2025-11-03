@@ -30,18 +30,19 @@ func main() {
 	}
 
 	// Declare and bind new queue
-	_, _, err = pubsub.DeclareAndBind(
+	err = pubsub.SubscribeGob(
 		conn,
 		routing.ExchangePerilTopic,
 		routing.GameLogSlug,
 		routing.GameLogSlug+".*",
 		pubsub.Durable,
+		handlerLog(),
 	)
 
 	// create new channel
 	// ch, err := conn.Channel()
 	if err != nil {
-		log.Fatal("Failed to create new channel:", err)
+		log.Fatal("Failed to consume log queue:", err)
 	}
 
 	fmt.Println("AMPQ connection successful")
