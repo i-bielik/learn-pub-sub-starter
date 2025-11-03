@@ -1,7 +1,9 @@
 package pubsub
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -24,7 +26,32 @@ func PublishJSON[T any](ch *amqp.Channel, exchange, key string, val T) error {
 
 	err = ch.PublishWithContext(context.Background(), exchange, key, false, false, msg)
 	if err != nil {
-		log.Fatalf("basic.publish: %v", err)
+		log.Fatalf("basic.json.publish: %v", err)
+		return err
+	}
+
+	return nil
+
+}
+
+func PublishGob[T any](ch *amqp.Channel, exchange, key string, val T) error {
+	// Encode value to gob binary
+	var b bytes.Buffer
+	enc := gob.NewEncoder(&b)
+	err := enc.Encode(val)
+	if err != nil {
+		return err
+	}
+
+	// Prepare message
+	msg := amqp.Publishing{
+		ContentType: "application/gob",
+		Body:        b.Bytes(),
+	}
+
+	err = ch.PublishWithContext(context.Background(), exchange, key, false, false, msg)
+	if err != nil {
+		log.Fatalf("basic.gob.publish: %v", err)
 		return err
 	}
 
@@ -93,7 +120,7 @@ func DeclareAndBind(
 	}
 
 	// bind queue to channel
-	err = ch.QueueBind(queueName, key, exchange, false, amqp.Table{})
+	err = ch.QueueBind(queueName, key, exchange, false, nil)
 	if err != nil {
 		log.Fatal("Failed to bind queue to channel:", err)
 		return nil, amqp.Queue{}, err

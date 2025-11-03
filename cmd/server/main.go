@@ -24,11 +24,19 @@ func main() {
 
 	defer conn.Close()
 
-	// print server help at the beginning
-	gamelogic.PrintServerHelp()
+	publishCh, err := conn.Channel()
+	if err != nil {
+		log.Fatalf("could not create channel: %v", err)
+	}
 
 	// Declare and bind new queue
-	ch, _, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, "game_logs", routing.GameLogSlug, pubsub.Durable)
+	_, _, err = pubsub.DeclareAndBind(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		routing.GameLogSlug+".*",
+		pubsub.Durable,
+	)
 
 	// create new channel
 	// ch, err := conn.Channel()
@@ -37,6 +45,9 @@ func main() {
 	}
 
 	fmt.Println("AMPQ connection successful")
+
+	// print server help at the beginning
+	gamelogic.PrintServerHelp()
 
 out:
 	for {
@@ -49,7 +60,7 @@ out:
 
 			// publish message
 			err = pubsub.PublishJSON(
-				ch,
+				publishCh,
 				string(routing.ExchangePerilDirect),
 				string(routing.PauseKey),
 				routing.PlayingState{IsPaused: true},
@@ -61,7 +72,7 @@ out:
 			log.Println("Sending a Resume message")
 			// publish message
 			err = pubsub.PublishJSON(
-				ch,
+				publishCh,
 				string(routing.ExchangePerilDirect),
 				string(routing.PauseKey),
 				routing.PlayingState{IsPaused: false},
