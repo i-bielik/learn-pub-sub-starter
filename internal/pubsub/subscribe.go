@@ -72,6 +72,10 @@ func SubscribeGob[T any](
 	if err != nil {
 		return fmt.Errorf("created error: %w", err)
 	}
+	err = ch.Qos(10, 0, false)
+	if err != nil {
+		return fmt.Errorf("prefetch error: %w", err)
+	}
 	channel, err := ch.Consume(queueName, "", false, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("consume error: %w", err)

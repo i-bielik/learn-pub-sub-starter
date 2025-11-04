@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
@@ -112,7 +113,31 @@ func main() {
 		case "help":
 			gamelogic.PrintClientHelp()
 		case "spam":
-			fmt.Println("Spamming not allowed yet!")
+			// fmt.Println("Spamming not allowed yet!")
+			if len(cmd) < 2 {
+				fmt.Println("need to provide second argument in form spam <number>")
+				continue
+			}
+
+			n, err := strconv.Atoi(cmd[1])
+			if err != nil {
+				fmt.Printf("error converting string to int: %v\n", err)
+				continue
+			}
+			msgs := make([]string, 0, n)
+			for i := 0; i < n; i++ {
+				msgs = append(msgs, gamelogic.GetMaliciousLog())
+			}
+
+			// Publish each message log
+			for _, msg := range msgs { // Use range to iterate without index
+				err := publishGameLog(publishCh, gs.GetUsername(), msg)
+				if err != nil {
+					// Handle error (e.g., log or continue)
+					fmt.Printf("Failed to publish game log: %v\n", err)
+				}
+			}
+
 		case "quit":
 			gamelogic.PrintQuit()
 			return

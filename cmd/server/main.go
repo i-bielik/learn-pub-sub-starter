@@ -53,6 +53,9 @@ func main() {
 out:
 	for {
 		cmd := gamelogic.GetInput()
+		if len(cmd) == 0 {
+			continue
+		}
 		switch cmd[0] {
 		case "":
 			continue
